@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.functions import Now
 
 
 class TaskManager(models.Manager):
@@ -13,7 +14,7 @@ class TaskManager(models.Manager):
         """
 
         return (
-            self.filter(started_at__isnull=True, queue__in=in_queues)
+            self.filter(started_at__isnull=True, run_at__gte=Now(), queue__in=in_queues)
             .select_for_update(skip_locked=True, of=("self",))
             .select_related("from_schedule")
             .order_by("-run_at")
