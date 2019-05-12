@@ -5,7 +5,7 @@ from croniter import croniter
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models
-from django.db.models import Func, Q
+from django.db.models import Func, Q, Transform
 from django.db.models.functions import Now
 from django.utils import timezone
 
@@ -16,6 +16,22 @@ TASK_MODEL = getattr(settings, "TASKS_TASK_MODEL", "tasks.Task")
 TASK_SCHEDULE_MODEL = getattr(
     settings, "TASKS_SCHEDULE_TASK_MODEL", "tasks.TaskSchedule"
 )
+
+
+class JSONTypeof(Transform):
+    """
+    A custom lookup to get the type of a value in a JSON field. We use this to
+    ensure that the task arguments specified are an object, and not any other
+    JSON value.
+    """
+
+    lookup_name = "typeof"
+    function = "jsonb_typeof"
+    output_field = models.CharField()
+
+
+# Register the custom typeof lookup on JSONField, as we use it for constraints below.
+JSONField.register_lookup(JSONTypeof)
 
 
 class Task(models.Model):
@@ -58,7 +74,7 @@ class Task(models.Model):
             # an object. This is required because these arguments are passed directly to
             # the function as keyword arguments.
             models.CheckConstraint(
-                check=Q(Func("jsonb_typeof(task_arguments)='object'")),
+                check=Q(task_arguments__typeof="object"),
                 name="task_arguments_must_be_object",
             ),
             # Constraint to validate that we do not get any duplicate scheduled tasks.
@@ -142,7 +158,7 @@ class TaskSchedule(models.Model):
             # an object. This is required because these arguments are passed directly to
             # the function as keyword arguments.
             models.CheckConstraint(
-                check=Q(Func("jsonb_typeof(task_arguments)='object'")),
+                check=Q(task_arguments__typeof="object"),
                 name="task_arguments_must_be_object",
             ),
         ]
