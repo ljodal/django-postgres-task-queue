@@ -16,6 +16,7 @@ TASK_MODEL = getattr(settings, "TASKS_TASK_MODEL", "tasks.Task")
 TASK_SCHEDULE_MODEL = getattr(
     settings, "TASKS_SCHEDULE_TASK_MODEL", "tasks.TaskSchedule"
 )
+DEFAULT_QUEUE = getattr(settings, "TASKS_DEFAULT_QUEUE", "default")
 
 
 class JSONTypeof(Transform):
@@ -47,7 +48,7 @@ class Task(models.Model):
     task_arguments = JSONField()
 
     # A task is placed on a named queue
-    queue = models.CharField(max_length=255)
+    queue = models.CharField(max_length=255, default=DEFAULT_QUEUE)
 
     # A task can be set to run at a later time. By default it will be run immediately
     run_at = models.DateTimeField(default=Now)
@@ -91,7 +92,7 @@ class Task(models.Model):
             ),
         ]
 
-    def process_task(self):
+    def run(self):
         """
         Perform this task. Sets started_at before execution and finished_at
         afterwards, and it also sets the result returned by the task. If the
